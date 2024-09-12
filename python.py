@@ -3,7 +3,9 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # Load dataset
 @st.cache_data
@@ -20,7 +22,7 @@ def preprocess_data(df):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
     # Vectorize the text
-    vectorizer = TfidfVectorizer(max_features=5000, stop_words='english')
+    vectorizer = TfidfVectorizer(max_features=5000, stop_words='english', ngram_range=(1, 2))  # Added n-grams
     X_train_tfidf = vectorizer.fit_transform(X_train)
     X_test_tfidf = vectorizer.transform(X_test)
     
@@ -28,7 +30,7 @@ def preprocess_data(df):
 
 # Train the model
 def train_model(X_train_tfidf, y_train):
-    model = LogisticRegression()
+    model = LogisticRegression(max_iter=1000)  # Increased max_iter
     model.fit(X_train_tfidf, y_train)
     return model
 
@@ -47,6 +49,21 @@ df = load_data()
 # Preprocess data and train model
 X_train_tfidf, X_test_tfidf, y_train, y_test, vectorizer = preprocess_data(df)
 model = train_model(X_train_tfidf, y_train)
+
+# Evaluation
+y_pred = model.predict(X_test_tfidf)
+report = classification_report(y_test, y_pred, target_names=['Fake', 'Real'])
+conf_matrix = confusion_matrix(y_test, y_pred, labels=['fake', 'real'])
+
+st.subheader('Model Evaluation')
+st.text(f"Classification Report:\n{report}")
+
+# Plot confusion matrix
+fig, ax = plt.subplots()
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=['Fake', 'Real'], yticklabels=['Fake', 'Real'])
+ax.set_xlabel('Predicted')
+ax.set_ylabel('Actual')
+st.pyplot(fig)
 
 # Get user input
 user_input = st.text_area("Enter a sentence to check if it's Real or Fake news:", "")
